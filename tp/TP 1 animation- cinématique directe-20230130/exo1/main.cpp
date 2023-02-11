@@ -28,51 +28,17 @@ using namespace glm;
 using namespace std;
 
 //****************************************
-#define NB_BRAS  4
+
 
 
 mat4 rotationInterpolMatrice,rotationInterpolQuaternion;
 
 quat q0 ,q1; // déclaration de quaternions
 
-
+float t=0.0;
 
 //****************************************
- struct Sommet{
 
-        double x;
-        double y;
-        double z;
-       
-}  ;
-struct Os
-{
-  int suivant;
-  int precedent;
-
-  Sommet debu;
-  Sommet fin;
-
-  
-};
-
-struct Bras
-{
-   std::map<int, Os> bras; 
-   int nb;
-
-   void add(int num,Os o)
-   {
-    bras[num]=o;
-    nb++;
-   }
-  
-
-  
-
-  
-
-};
 
 
 char presse;
@@ -91,7 +57,7 @@ void anim( int NumTimer) ;
 
 void anim( int NumTimer)
 {
-  q0 =angleAxis 	((float)radians(45.), vec3(1.,0.,0.));
+  q0 =angleAxis ((float)radians(45.), vec3(1.,0.,0.));
 q1=angleAxis((float)radians(90.), vec3(0.,1.,0.));
 
 mat4 myMatriceRotation1 = mat4_cast(q0);
@@ -166,7 +132,10 @@ void bras()
     glPopMatrix();
 
     // a animer par interpolation de matrice
-    glPushMatrix();
+
+
+glPushMatrix();
+    
     glMultMatrixf(&rotationInterpolMatrice[0][0]);
         glColor3f(1,1,0);
         glScalef(2,.2,.2);
@@ -175,7 +144,9 @@ void bras()
     glPopMatrix();
 
 
-    glPopMatrix();
+    
+
+   
 }
 
 void affichage()
@@ -199,6 +170,9 @@ void affichage()
     	glVertex3f(0, 0,0.0);
     	glVertex3f(1, 0,0.0);
     glEnd();
+
+
+    
     //axe des y en vert
     glBegin(GL_LINES);
     	glColor3f(0.0,1.0,0.0);
@@ -222,22 +196,8 @@ void clavier(unsigned char touche,int x,int y)
 {
   switch (touche)
     {
-    case '1':
-//    orientation[0]+=.5;
-    glutPostRedisplay();
-    break;
-//  case '&':
-//  orientation[0]-=.5;
-//  glutPostRedisplay();
-//  break;
-  case '2':
-//  orientation[1]+=.5;
-  glutPostRedisplay();
-  break;
-//  case 'é':
-//  orientation[1]+=.5;
-//  glutPostRedisplay();
-//  break;
+    
+
 
   case 'p': /* affichage du carre plein */
       glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);

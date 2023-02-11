@@ -15,68 +15,30 @@
 #include <ctime>
 #include <iostream>
 #include <vector>
-//#include <armadillo>
+#include <armadillo>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/io.hpp>
 #include <chrono>
 #include <map>
-#include"Sommet.h"
-#include"Vecteur.h"
+
 
 using namespace glm;
 using namespace std;
 
-
-//****************************************
-#define NB_BRAS  4
-
-
-
 //****************************************
 
-struct Os
-{
-  float longeur;
-  float angle;
-  Vecteur axe;
-  
-  mat4 rotation;
-  mat4 translation;
-  
- 
-  void affiche()
-  {
-    glPushMatrix();
-    
-    
-          glColor3f(1,0,0);
-          glMultMatrixf(&translation[0][0]);
-         // glTranslatef(longeur/2,0,0);
-           glScalef(longeur,.2,.2);
-          glutSolidCube(1.);
-      glPopMatrix();
 
-  }
-  
-};
 
-struct Bras
-{
+mat4 rotationInterpolMatrice,rotationInterpolQuaternion;
 
-   std::map<int, Os> bones; 
-   int nb=0;
-   mat4 rotation;
-   mat4 translation;
-   
-   void add(int num,Os o)
-   {
-    bones[num]=o;
-    nb++;
-   }
+quat q0 ,q1; // déclaration de quaternions
 
-};
+float t=0.0;
+
+//****************************************
+
 
 
 char presse;
@@ -90,93 +52,102 @@ void idle();
 void mouse(int bouton,int etat,int x,int y);
 void mousemotion(int x,int y);
 
-Bras monbras;
+void anim( int NumTimer) ;
 
-void Creatbras()
+
+void anim( int NumTimer)
 {
+  q0 =angleAxis ((float)radians(45.), vec3(1.,0.,0.));
+q1=angleAxis((float)radians(90.), vec3(0.,1.,0.));
 
-quat q0,q1,q2;
-  float l0=1.;
-  float l1=2.;
-  float l2=1.;
+mat4 myMatriceRotation1 = mat4_cast(q0);
 
-  float ang0=90.;
-  float ang1=90.;
-  float ang2=90.;
-   
-  q0 =angleAxis ((float)radians(0.), vec3(0.,0.,1.));
-  q1 =angleAxis ((float)radians(40.), vec3(0.,0.,1.));
-  q2 =angleAxis ((float)radians(-40.), vec3(0.,0.,1.));
+mat4 myMatriceRotation2 = mat4_cast(q1);
+  
+    using namespace std::chrono;
+    static int i=0;
+    static time_point<system_clock> refTime = system_clock::now()  ;
 
-  mat4 t0 = glm::translate(glm::mat4(1.0), glm::vec3(l0/2, 0.0f, 0.0f));
-  mat4 t1 = glm::translate(glm::mat4(1.0), glm::vec3(l1/2, 0.0f, 0.0f));
-  mat4 t2 = glm::translate(glm::mat4(1.0), glm::vec3(l2/2, 0.0f, 0.0f));
-  std::map<int, Os> bones;
-  bones[0]={l0,ang0,{0,0,1},mat4_cast(q0),t0};
-  bones[1]={l1,ang1,{0,0,1},mat4_cast(q1),t1};
+    time_point<system_clock> currentTime = system_clock::now(); // This and "end"'s type is std::chrono::time_point
 
-  monbras={bones,2,mat4(1.0f),mat4(1.0f)} ;
+    duration<double> deltaTime = currentTime - refTime;
 
-  monbras.add(2,{l2,ang2,{0,0,1},mat4_cast(q2),t2});
+    int delatTemps = duration_cast<milliseconds>( deltaTime).count() ;
+   float t=((float)(delatTemps%1000)/1000);
+    rotationInterpolQuaternion=mat4_cast( mix(q0,q1,t));
+    rotationInterpolMatrice=((1-t)*myMatriceRotation1)+t*myMatriceRotation2;
 
-
-
-
-
- //q0 =angleAxis ((float)radians(45.), vec3(1.,0.,0.));
- //b.rotation=mat4_cast(q0);
-
+    glutPostRedisplay();
+  //  glutTimerFunc(100,anim,1 );
 
 }
 
 
+int main(int argc,char **argv)
+{
+  /* initialisation de glut et creation
+     de la fenetre */
+  glutInit(&argc,argv);
+  glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
+  glutInitWindowPosition(200,200);
+  glutInitWindowSize(1500,1500);
+  glutCreateWindow("cube");
+
+  /* Initialisation d'OpenGL */
+  glClearColor(0.0,0.0,0.0,0.0);
+  glColor3f(1.0,1.0,1.0);
+  glPointSize(10.0);
+  glEnable(GL_DEPTH_TEST);
+
+  /* enregistrement des fonctions de rappel */
+  glutDisplayFunc(affichage);
+  glutKeyboardFunc(clavier);
+  glutReshapeFunc(reshape);
+  glutMouseFunc(mouse);
+  glutMotionFunc(mousemotion);
+  //glutTimerFunc(200, anim, 1);
+
+  glMatrixMode( GL_PROJECTION );
+     glLoadIdentity();
+   gluPerspective(60 ,1,.1,30.);
+
+  /* Entree dans la boucle principale glut */
+  glutMainLoop();
+  return 0;
+}
 
 
 
-void Affichebras()
+void bras()
 {
 
-mat4 rotations=mat4(1.0);
-mat4 translation=mat4(1.0);
-  for(int i=0;i<monbras.nb;i++)
-    {
-     
-      Os c=monbras.bones[i];
 
-      
-      
- 
-
-      glPushMatrix();
-      if(i>0)
-      {
-      vec4 position(monbras.bones[i-1].longeur,0,0,1);
-      vec4 res= rotations*position;
+// a animer pas interpolation de quaternions
+    glPushMatrix();
+    //glMultMatrixf(&rotationInterpolQuaternion[0][0]);
+        glColor3f(1,0,0);
     
-      //c.posdb={res.x,res.y,res.z};
-      translation*=glm::translate(mat4(1.0), vec3(res));
-       
+        glTranslatef(1.,0.,0.);
+           glScalef(2,.2,.2);
+        glutSolidCube(1.);
+    glPopMatrix();
+
+    // a animer par interpolation de matrice
+/*
+
+glPushMatrix();
     
-     glMultMatrixf(&translation[0][0]);  
+    glMultMatrixf(&rotationInterpolMatrice[0][0]);
+        glColor3f(1,1,0);
+        glScalef(2,.2,.2);
+        glTranslatef(.5,0.,0.);
+        glutSolidCube(1.);
+    glPopMatrix();
+
+*/
     
-      }
 
-
-      rotations*=c.rotation;
-      glMultMatrixf(&rotations[0][0]);  
-      c.affiche();
-      glPopMatrix();
-
-    }
-
-
-
-
-
-
-
-
-
+   
 }
 
 void affichage()
@@ -191,7 +162,7 @@ void affichage()
   glRotatef(angley,1.0,0.0,0.0);
   glRotatef(anglex,0.0,1.0,0.0);
 
-        Affichebras();
+        bras();
 
     //Repère
     //axe x en rouge
@@ -199,6 +170,13 @@ void affichage()
         glColor3f(1.0,0.0,0.0);
     	glVertex3f(0, 0,0.0);
     	glVertex3f(1, 0,0.0);
+    glEnd();
+
+
+      glBegin(GL_LINES);
+        glColor3f(1.0,0.0,0.0);
+    	glVertex3f(0.0, 0,0.0);
+    	glVertex3f(1, 0,1.0);
     glEnd();
     //axe des y en vert
     glBegin(GL_LINES);
@@ -219,69 +197,37 @@ void affichage()
   glutSwapBuffers();
 }
 
-int main(int argc,char **argv)
-{
-  /* initialisation de glut et creation
-     de la fenetre */
-  glutInit(&argc,argv);
-  glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
-  glutInitWindowPosition(200,200);
-  glutInitWindowSize(1500,1500);
-  glutCreateWindow("cube");
-
-  /* Initialisation d'OpenGL */
-  glClearColor(0.0,0.0,0.0,0.0);
-  glColor3f(1.0,1.0,1.0);
-  glPointSize(10.0);
-  glEnable(GL_DEPTH_TEST);
-
-  
-   Creatbras();
-
-
-  /* enregistrement des fonctions de rappel */
-  glutDisplayFunc(affichage);
-  glutKeyboardFunc(clavier);
-  glutReshapeFunc(reshape);
-  glutMouseFunc(mouse);
-  glutMotionFunc(mousemotion);
- // glutTimerFunc(200, anim, 1);
-
-  glMatrixMode( GL_PROJECTION );
-     glLoadIdentity();
-   gluPerspective(60 ,1,.1,30.);
-
-  /* Entree dans la boucle principale glut */
-  glutMainLoop();
-  return 0;
-}
-
-
-
-
-
-
-
 void clavier(unsigned char touche,int x,int y)
 {
   switch (touche)
     {
-    case '1':
-//    orientation[0]+=.5;
-    glutPostRedisplay();
-    break;
-//  case '&':
-//  orientation[0]-=.5;
-//  glutPostRedisplay();
-//  break;
-  case '2':
-//  orientation[1]+=.5;
-  glutPostRedisplay();
-  break;
-//  case 'é':
-//  orientation[1]+=.5;
-//  glutPostRedisplay();
-//  break;
+    case '+':
+    {
+      t+=0.1;
+      q0 =angleAxis ((float)radians(45.), vec3(1.,0.,0.));
+      q1=angleAxis((float)radians(90.), normalize(vec3(1,0.,1)));
+      mat4 myMatriceRotation1 = mat4_cast(q0);
+      mat4 myMatriceRotation2 = mat4_cast(q1);
+      rotationInterpolQuaternion=mat4_cast( mix(q0,q1,t));
+      rotationInterpolMatrice=((1-t)*myMatriceRotation1)+t*myMatriceRotation2;
+      glutPostRedisplay();
+    }
+     
+      break;
+
+    case '-':
+    {
+      t-=0.1;
+      q0 =angleAxis ((float)radians(45.), vec3(1.,0.,0.));
+      q1=angleAxis((float)radians(90.), vec3(0.,1.,0.));
+      mat4 myMatriceRotation1 = mat4_cast(q0);
+      mat4 myMatriceRotation2 = mat4_cast(q1);
+      rotationInterpolQuaternion=mat4_cast( mix(q0,q1,t));
+      rotationInterpolMatrice=((1-t)*myMatriceRotation1)+t*myMatriceRotation2;
+      glutPostRedisplay();
+    }
+      break;
+
 
   case 'p': /* affichage du carre plein */
       glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
