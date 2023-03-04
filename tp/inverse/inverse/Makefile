@@ -2,7 +2,7 @@ EXT = cpp
 CXX=g++
 CFLAGS=-Wall -I/urs/local/include
 CFLAGS=
-LDFLAGS= -lGL -lGLEW -lGLU -lglut  
+LDFLAGS= -lGL -lGLEW -lGLU -lglut   -larmadillo
 
 #SRC=saisieinteractive.cpp courbe.cpp
 SRC=$(wildcard *.$(EXT))

@@ -15,7 +15,7 @@
 #include <ctime>
 #include <iostream>
 #include <vector>
-//#include <armadillo>
+#include <armadillo>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -45,7 +45,9 @@ struct Os
   mat4 rotation;
   mat4 translation;
 
+
   vec3 couleur;
+  vec3 position;
   void maj(float lo,float angl)
   {
     longeur=lo;
@@ -77,7 +79,7 @@ struct Os
     
           glColor3f(couleur.x,couleur.y,couleur.z);
           glMultMatrixf(&translation[0][0]);
-         // glTranslatef(longeur/2,0,0);
+       
            glScalef(longeur,.2,.2);
           glutSolidCube(1.);
       glPopMatrix();
@@ -88,6 +90,7 @@ struct Os
 
 struct Bras
 {
+
 
    std::map<int, Os> bones; 
    int nb=0;
@@ -100,7 +103,119 @@ struct Bras
     nb++;
    }
 
+   double getlongMax()
+   {
+      double res=0;
+      for(int i=0;i<nb;i++)
+      res+= bones[i].longeur;
+
+    return res;
+   }
+
+
+
+arma::mat ComputeJacobienne(vec3 erreur)
+{
+   
+    vec3 ai(0,0,1);
+
+  arma::mat res=arma::mat(3,nb);
+  for(int i=0;i<nb;i++)
+  {
+    vec3 temp=erreur-bones[i].position;
+
+    Vecteur v=Vecteur{ai.x,ai.y,ai.z}.ProduitVectoriele(Vecteur{temp.x,temp.y,temp.z});
+    res(0,i)=v.x;
+    res(1,i)=v.y;
+    res(2,i)=v.z;
+
+  }
+  return res;
+ 
+
+
+
+}
+vec3 computeEndPoint()
+   {
+    mat4 rotationslocal=mat4(1.0);
+    mat4 translationlocal=mat4(1.0);
+    vec4 monpoint(0.,0.,0.,1.);
+       bones[0].position=vec3(0,0,0);
+      for(int i=0;i<nb;i++)
+        {
+      
+          Os c=bones[i];
+          if(i>0)
+          {
+          vec4 position(bones[i-1].longeur,0,0,1);
+          vec4 res= rotationslocal*position;
+          translationlocal*=glm::translate(mat4(1.0), vec3(res));
+           bones[i].position=vec3( translationlocal*monpoint);
+          }
+
+          rotationslocal*=c.rotation;
+          
+        }
+        vec4 position(bones[nb-1].longeur,0,0,1);
+        vec4 res= rotationslocal*position;
+        translationlocal*=glm::translate(mat4(1.0), vec3(res));
+        return vec3( translationlocal*monpoint);
+   }
+void maj(arma::vec V)
+{
+ for(int i=0;i<nb;i++)
+        {
+      
+          bones[i].majangle(bones[i].angle+V(i));
+
+          
+        }
+
+
+}
+
+void computePOSITION()
+   {
+    mat4 rotationslocal=mat4(1.0);
+    mat4 translationlocal=mat4(1.0);
+    vec4 monpoint(0.,0.,0.,1.);
+    bones[0].position=vec3(0,0,0);
+      for(int i=0;i<nb;i++)
+        {
+      
+          Os c=bones[i];
+          if(i>0)
+          {
+          vec4 position(bones[i-1].longeur,0,0,1);
+          vec4 res= rotationslocal*position;
+          translationlocal*=glm::translate(mat4(1.0), vec3(res));
+          bones[i].position=vec3( translationlocal*monpoint);
+          }
+
+          rotationslocal*=c.rotation;
+          
+        }
+     
+   }
+
+
+   void setDroit(double angle)
+   {
+     bones [0].majangle(angle);
+    for(int i=1;i<nb;i++)
+        {
+      
+          bones[i].majangle(0.);
+        }
+       
+
+
+   }
 };
+
+
+
 
 
 char presse;
@@ -116,7 +231,7 @@ float ang0=0.;
 float ang1=-90.;
 float ang2=90.;
 float ang3=0.;
-
+ vec3 cible(0.,2.,0.);
 /* Prototype des fonctions */
 void affichage();
 void clavier(unsigned char touche,int x,int y);
@@ -145,7 +260,7 @@ void Creatbras()
   mat4 t0 = glm::translate(glm::mat4(1.0), glm::vec3(l0/2, 0.0f, 0.0f));
   mat4 t1 = glm::translate(glm::mat4(1.0), glm::vec3(l1/2, 0.0f, 0.0f));
   mat4 t2 = glm::translate(glm::mat4(1.0), glm::vec3(l2/2, 0.0f, 0.0f));
-  mat4 t3 = glm::translate(glm::mat4(1.0), glm::vec3(l2/2, 0.0f, 0.0f));
+  mat4 t3 = glm::translate(glm::mat4(1.0), glm::vec3(l3/2, 0.0f, 0.0f));
   std::map<int, Os> bones;
   bones[0]={l0,ang0,{0,0,1},mat4_cast(q0),t0,vec3(1.,0.,0.)};
   bones[1]={l1,ang1,{0,0,1},mat4_cast(q1),t1,vec3(0.,1.,0.)};
@@ -155,12 +270,6 @@ void Creatbras()
   monbras.add(2,{l2,ang2,{0,0,1},mat4_cast(q2),t2,vec3(0.,0.,1.)});
   monbras.add(3,{l3,ang3,{0,0,1},mat4_cast(q3),t3,vec3(1.,1.,0.)});
 
-
-
-
-
- //q0 =angleAxis ((float)radians(45.), vec3(1.,0.,0.));
- //b.rotation=mat4_cast(q0);
 
 
 }
@@ -175,34 +284,76 @@ void Affichebras()
 mat4 rotations=mat4(1.0);
 mat4 translation=mat4(1.0);
   for(int i=0;i<monbras.nb;i++)
-    {
-     
+    {   
       Os c=monbras.bones[i];
-
-      
       glPushMatrix();
       if(i>0)
       {
-      vec4 position(monbras.bones[i-1].longeur,0,0,1);
-      vec4 res= rotations*position;
-    
-      //c.posdb={res.x,res.y,res.z};
-      translation*=glm::translate(mat4(1.0), vec3(res));
-       
-    
-     glMultMatrixf(&translation[0][0]);  
-    
+        vec4 position(monbras.bones[i-1].longeur,0,0,1);
+        vec4 res= rotations*position;
+        translation*=glm::translate(mat4(1.0), vec3(res));  
+        glMultMatrixf(&translation[0][0]);   
       }
-
       rotations*=c.rotation;
       glMultMatrixf(&rotations[0][0]);  
       c.affiche();
       glPopMatrix();
+    }
+
+}
+
+
+void calcule()
+{
+  int kmax=1000;
+  double eps=0.01;
+  float longmax=monbras.getlongMax();
+  vec3 end=monbras.computeEndPoint();
+  
+  Vecteur target={cible.x,cible.y,cible.z};
+  double angle=degrees(acos((target.ProduitScalaire({1.,0.,0.}))/target.getNorme(1)));
+
+  if(target.getNorme(1)>longmax)
+  {
+  
+    monbras.setDroit(angle);
+  }
+  else
+  {
+    vec3 erreur=cible-end;
+    vec3 ai(0,0,1);
+    
+
+
+    for( int k=0;k<kmax&&Vecteur{erreur.x,erreur.y,erreur.z}.getNorme(1)>eps;k++)
+    {
+      arma::vec3 E={erreur.x,erreur.y,erreur.z};
+      arma::mat J=monbras.ComputeJacobienne(end);
+      arma::mat Jplus=arma::pinv(J);
+      arma::vec V=Jplus*E;
+      
+    
+      if(arma::max(V)>2)
+         V*=(2/arma::max(V));
+       
+       monbras.maj(V);
+      end=monbras.computeEndPoint();
+
+      erreur=cible-end;
+
 
     }
 
 
 
+
+
+
+  }
+
+
+
+  
 }
 
 void affichage()
@@ -218,8 +369,34 @@ glTranslatef(0,0,cameraDistance);
 	glRotatef(cameraAngleX,1.,0.,0.)	;
 	glRotatef(cameraAngleY,0.,1.,0.);
 
-        Affichebras();
+        
+calcule();
+Affichebras();
+ glPushMatrix();
+      glTranslatef(cible.x,cible.y,cible.z);
+            glPushMatrix();
+                  glColor3f(1,0,0);
+               
+                  glScalef(0.02,.02,.02);
+                  glutSolidSphere(1,20,20);
+            glPopMatrix();
 
+            glPushMatrix();
+                  glBegin(GL_LINES);
+                glColor3f(1.0,0.0,0.0);
+              glVertex3f(-0.2, 0,0.0);
+              glVertex3f(0.2, 0,0.0);
+            glEnd();
+            //axe des y en vert
+            glBegin(GL_LINES);
+              glColor3f(0.0,1.0,0.0);
+              glVertex3f(0, -0.2,0.0);
+              glVertex3f(0, 0.2,0.0);
+            glEnd();
+          
+           glPopMatrix();
+
+glPopMatrix();
     //Repère
     //axe x en rouge
     glBegin(GL_LINES);
@@ -293,6 +470,31 @@ void clavier(unsigned char touche,int x,int y)
 {
   switch (touche)
     {
+      case '&':
+        cible.x-=0.1;
+      
+         glutPostRedisplay();
+        break;
+        case '1':
+          cible.x+=0.1;
+        glutPostRedisplay();
+        break;
+
+        case '"':
+        cible.y-=0.1;
+      
+         glutPostRedisplay();
+        break;
+        case '3':
+          cible.y+=0.1;
+        glutPostRedisplay();
+        break;
+        
+
+
+
+
+
     case 'a':
     ang0-=2.;
     monbras.bones[0].majangle(ang0);
@@ -328,14 +530,7 @@ void clavier(unsigned char touche,int x,int y)
     break;
   
   
-  case '2':
-//  orientation[1]+=.5;
-  glutPostRedisplay();
-  break;
-//  case 'é':
-//  orientation[1]+=.5;
-//  glutPostRedisplay();
-//  break;
+
 
   case 'p': /* affichage du carre plein */
       glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
@@ -415,6 +610,7 @@ void mouseMotion(int x, int y)
         cameraAngleX += (y - mouseY);
         mouseX = x;
         mouseY = y;
+        
     }
     if(mouseRightDown)
     {
