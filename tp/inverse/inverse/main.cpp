@@ -312,7 +312,7 @@ void calcule()
   
   Vecteur target={cible.x,cible.y,cible.z};
   double angle=degrees(acos((target.ProduitScalaire({1.,0.,0.}))/target.getNorme(1)));
-
+/*
   if(target.getNorme(1)>longmax)
   {
   
@@ -320,6 +320,7 @@ void calcule()
   }
   else
   {
+    */
     vec3 erreur=cible-end;
     vec3 ai(0,0,1);
     
@@ -354,7 +355,7 @@ void calcule()
 
 
   
-}
+//}
 
 void affichage()
 {
