@@ -303,10 +303,11 @@ mat4 translation=mat4(1.0);
 }
 
 
-void calcule()
+
+void calcule2(int NumTimer)
 {
-  int kmax=1000;
-  double eps=0.01;
+ 
+  double eps=0.001;
   float longmax=monbras.getlongMax();
   vec3 end=monbras.computeEndPoint();
   
@@ -317,8 +318,7 @@ void calcule()
     vec3 ai(0,0,1);
     
 
-
-    for( int k=0;k<kmax&&Vecteur{erreur.x,erreur.y,erreur.z}.getNorme(1)>eps;k++)
+    if(Vecteur{erreur.x,erreur.y,erreur.z}.getNorme(1)>eps)
     {
       arma::vec3 E={erreur.x,erreur.y,erreur.z};
       arma::mat J=monbras.ComputeJacobienne(end);
@@ -329,21 +329,15 @@ void calcule()
       if(arma::max(V)>2)
          V*=(2/arma::max(V));
        
-       monbras.maj(V);
+      monbras.maj(V);
       end=monbras.computeEndPoint();
 
       erreur=cible-end;
-
-
     }
+     glutPostRedisplay();
+     glutTimerFunc(20,calcule2,1 );
 
-
-
-
-
-
-  }
-
+}
 
 
   
@@ -358,12 +352,11 @@ void affichage()
   glMatrixMode( GL_MODELVIEW );
   glLoadIdentity();
   glTranslatef(0.,0.,-5.);
-glTranslatef(0,0,cameraDistance);
+  glTranslatef(0,0,cameraDistance);
 	glRotatef(cameraAngleX,1.,0.,0.)	;
 	glRotatef(cameraAngleY,0.,1.,0.);
 
         
-calcule();
 Affichebras();
  glPushMatrix();
       glTranslatef(cible.x,cible.y,cible.z);
@@ -442,7 +435,7 @@ int main(int argc,char **argv)
   glutReshapeFunc(reshape);
   glutMouseFunc(mouse);
   glutMotionFunc(mouseMotion);
- // glutTimerFunc(200, anim, 1);
+  glutTimerFunc(20, calcule2, 1);
 
   glMatrixMode( GL_PROJECTION );
      glLoadIdentity();
